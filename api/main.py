@@ -24,6 +24,9 @@ from dsa_modules.min_heap import TopKURLs
 from dsa_modules.collision_detector import CollisionDetector
 from config.database import db
 
+# Configuration
+API_BASE_URL = "https://tinyurl-backend-02o2.onrender.com"
+
 # Initialize FastAPI app
 app = FastAPI(
     title="TinyURL - Custom DSA Implementation",
@@ -126,7 +129,7 @@ async def shorten_url(request: ShortenRequest):
             success=True,
             original_url=original_url,
             short_code=cached_code,
-            short_url=f"http://localhost:8000/{cached_code}",
+            short_url=f"{API_BASE_URL}/{cached_code}",
             collision_detected=False,
             attempts=1,
             strategy_used=None,
@@ -148,7 +151,7 @@ async def shorten_url(request: ShortenRequest):
                 success=True,
                 original_url=original_url,
                 short_code=short_code,
-                short_url=f"http://localhost:8000/{short_code}",
+                short_url=f"{API_BASE_URL}/{short_code}",
                 collision_detected=False,
                 attempts=1,
                 strategy_used=None,
@@ -203,7 +206,7 @@ async def shorten_url(request: ShortenRequest):
         success=True,
         original_url=original_url,
         short_code=short_code,
-        short_url=f"http://localhost:8000/{short_code}",
+        short_url=f"{API_BASE_URL}/{short_code}",
         collision_detected=collision_detected,
         attempts=attempts,
         strategy_used=strategy_used,
