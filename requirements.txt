@@ -1,0 +1,26 @@
+# TinyURL Backend Dependencies
+# Python 3.9+ required
+# Install with: pip install -r requirements.txt
+
+# Web Framework
+fastapi>=0.104.0,<0.110.0
+
+# ASGI Server with standard extras (websockets, colorama, etc.)
+uvicorn[standard]>=0.24.0,<0.30.0
+
+# Data Validation
+pydantic>=2.5.0,<3.0.0
+
+# Environment Variables Management
+python-dotenv>=1.0.0,<2.0.0
+
+# Supabase Client (includes httpx, postgrest-py, etc.)
+supabase>=2.0.0,<3.0.0
+
+# Note: The following are installed automatically as dependencies:
+# - httpx (via supabase)
+# - starlette (via fastapi)
+# - typing-extensions (via pydantic)
+# - postgrest-py (via supabase)
+# - realtime-py (via supabase)
+# - storage3 (via supabase)
