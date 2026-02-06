@@ -23,9 +23,7 @@ from dsa_modules.trie import Trie
 from dsa_modules.min_heap import TopKURLs
 from dsa_modules.collision_detector import CollisionDetector
 from config.database import db
-
-# Configuration
-API_BASE_URL = "https://tinyurl-backend-02o2.onrender.com"
+from config.app_config import API_BASE_URL
 
 # Initialize FastAPI app
 app = FastAPI(
