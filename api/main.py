@@ -52,6 +52,7 @@ collision_detector = CollisionDetector(hash_map)
 class ShortenRequest(BaseModel):
     url: str
     collision_strategy: Optional[str] = "linear"
+    custom_endpoint: Optional[str] = None
     
     @validator('url')
     def validate_url(cls, v):
@@ -72,6 +73,18 @@ class ShortenRequest(BaseModel):
     def validate_strategy(cls, v):
         if v not in ['linear', 'regenerate', 'append']:
             raise ValueError('Invalid collision strategy. Must be: linear, regenerate, or append')
+        return v
+    
+    @validator('custom_endpoint')
+    def validate_custom_endpoint(cls, v):
+        if v is not None:
+            # Remove leading/trailing whitespace
+            v = v.strip()
+            if not v:
+                return None
+            # Validate custom endpoint: alphanumeric only, 3-20 characters
+            if not re.match(r'^[a-zA-Z0-9]{3,20}$', v):
+                raise ValueError('Custom endpoint must be 3-20 alphanumeric characters')
         return v
 
 
@@ -111,52 +124,55 @@ async def shorten_url(request: ShortenRequest):
     1. Validate URL
     2. Check LRU Cache for existing shortened URL
     3. Check database for existing URL
-    4. Generate short code using Base62 encoding
+    4. Generate short code using Base62 encoding OR use custom endpoint
     5. Detect and resolve collisions
     6. Store in all DSA structures
     7. Return shortened URL
     """
     original_url = request.url
     collision_strategy = request.collision_strategy
+    custom_endpoint = request.custom_endpoint
     
-    # Step 1: Check LRU Cache
-    cached_code = lru_cache.get(original_url)
-    if cached_code:
-        # URL already shortened and in cache
-        return ShortenResponse(
-            success=True,
-            original_url=original_url,
-            short_code=cached_code,
-            short_url=f"{API_BASE_URL}/{cached_code}",
-            collision_detected=False,
-            attempts=1,
-            strategy_used=None,
-            cached=True
-        )
-    
-    # Step 2: Check database for existing URL
-    try:
-        existing_url = await db.get_url_by_original(original_url)
-        if existing_url and existing_url.get('short_code'):
-            short_code = existing_url['short_code']
-            
-            # Add to cache and other structures
-            lru_cache.put(original_url, short_code)
-            hash_map.put(short_code, original_url)
-            trie.insert(original_url)
-            
+    # Step 1: Check LRU Cache (skip if custom endpoint is provided)
+    if not custom_endpoint:
+        cached_code = lru_cache.get(original_url)
+        if cached_code:
+            # URL already shortened and in cache
             return ShortenResponse(
                 success=True,
                 original_url=original_url,
-                short_code=short_code,
-                short_url=f"{API_BASE_URL}/{short_code}",
+                short_code=cached_code,
+                short_url=f"{API_BASE_URL}/{cached_code}",
                 collision_detected=False,
                 attempts=1,
                 strategy_used=None,
-                cached=False
+                cached=True
             )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    # Step 2: Check database for existing URL (skip if custom endpoint is provided)
+    if not custom_endpoint:
+        try:
+            existing_url = await db.get_url_by_original(original_url)
+            if existing_url and existing_url.get('short_code'):
+                short_code = existing_url['short_code']
+                
+                # Add to cache and other structures
+                lru_cache.put(original_url, short_code)
+                hash_map.put(short_code, original_url)
+                trie.insert(original_url)
+                
+                return ShortenResponse(
+                    success=True,
+                    original_url=original_url,
+                    short_code=short_code,
+                    short_url=f"{API_BASE_URL}/{short_code}",
+                    collision_detected=False,
+                    attempts=1,
+                    strategy_used=None,
+                    cached=False
+                )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     # Step 3: Insert into database to get auto-increment ID
     try:
@@ -164,8 +180,11 @@ async def shorten_url(request: ShortenRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to insert URL: {str(e)}")
     
-    # Step 4: Encode ID to Base62 short code
-    short_code = Base62Codec.encode(url_id)
+    # Step 4: Use custom endpoint or encode ID to Base62 short code
+    if custom_endpoint:
+        short_code = custom_endpoint
+    else:
+        short_code = Base62Codec.encode(url_id)
     
     # Step 5: Check for collision and resolve if needed
     collision_detected = False
