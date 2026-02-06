@@ -82,9 +82,6 @@ class ShortenRequest(BaseModel):
             v = v.strip()
             if not v:
                 return None
-            # Validate custom endpoint: alphanumeric only, 3-20 characters
-            if not re.match(r'^[a-zA-Z0-9]{3,20}$', v):
-                raise ValueError('Custom endpoint must be 3-20 alphanumeric characters')
         return v
 
 
